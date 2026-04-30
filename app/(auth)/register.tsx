@@ -19,23 +19,23 @@ import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { ApiError } from "@/services/api";
 
-type Role = "candidate" | "recruiter";
-
 export default function RegisterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { register } = useAuth();
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<Role>("candidate");
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleRegister() {
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       setError("Please fill in all fields");
       return;
     }
@@ -43,15 +43,27 @@ export default function RegisterScreen() {
       setError("Password must be at least 6 characters");
       return;
     }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
-      await register({ name: name.trim(), email: email.trim(), password, role });
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword,
+      });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/(tabs)");
     } catch (e) {
       const msg =
-        e instanceof ApiError ? e.message : "Registration failed. Please try again.";
+        e instanceof ApiError || e instanceof Error
+          ? e.message
+          : "Registration failed. Please try again.";
       setError(msg);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
@@ -67,10 +79,7 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.container,
-          {
-            paddingTop: insets.top + 32,
-            paddingBottom: insets.bottom + 32,
-          },
+          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -96,99 +105,60 @@ export default function RegisterScreen() {
             </View>
           ) : null}
 
-          <View style={styles.roleRow}>
-            {(["candidate", "recruiter"] as Role[]).map((r) => (
-              <TouchableOpacity
-                key={r}
-                style={[
-                  styles.roleBtn,
-                  {
-                    backgroundColor:
-                      role === r ? colors.primary : colors.secondary,
-                    borderColor: role === r ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setRole(r)}
-                activeOpacity={0.8}
-              >
-                <Feather
-                  name={r === "candidate" ? "user" : "briefcase"}
-                  size={16}
-                  color={role === r ? "#fff" : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.roleBtnText,
-                    {
-                      color: role === r ? "#fff" : colors.foreground,
-                    },
-                  ]}
-                >
-                  {r === "candidate" ? "Job Seeker" : "Recruiter"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {[
-            {
-              label: "Full Name",
-              icon: "user" as const,
-              value: name,
-              onChange: setName,
-              placeholder: "John Smith",
-              keyboard: "default" as const,
-              testId: "name-input",
-            },
-            {
-              label: "Email",
-              icon: "mail" as const,
-              value: email,
-              onChange: setEmail,
-              placeholder: "you@example.com",
-              keyboard: "email-address" as const,
-              testId: "email-input",
-            },
-          ].map((field) => (
-            <View key={field.label} style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                {field.label}
-              </Text>
-              <View
-                style={[
-                  styles.inputWrap,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <Feather
-                  name={field.icon}
-                  size={18}
-                  color={colors.mutedForeground}
-                  style={styles.inputIcon}
-                />
+          <View style={styles.nameRow}>
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>First Name</Text>
+              <View style={[styles.inputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <TextInput
                   style={[styles.input, { color: colors.foreground }]}
-                  placeholder={field.placeholder}
+                  placeholder="John"
                   placeholderTextColor={colors.mutedForeground}
-                  value={field.value}
-                  onChangeText={field.onChange}
-                  keyboardType={field.keyboard}
-                  autoCapitalize={field.keyboard === "email-address" ? "none" : "words"}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  autoCapitalize="words"
                   autoCorrect={false}
-                  testID={field.testId}
+                  testID="firstname-input"
                 />
               </View>
             </View>
-          ))}
+            <View style={[styles.fieldGroup, { flex: 1 }]}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>Last Name</Text>
+              <View style={[styles.inputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <TextInput
+                  style={[styles.input, { color: colors.foreground }]}
+                  placeholder="Smith"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  testID="lastname-input"
+                />
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Email</Text>
+            <View style={[styles.inputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="mail" size={18} color={colors.mutedForeground} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.mutedForeground}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                testID="email-input"
+              />
+            </View>
+          </View>
 
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Password</Text>
-            <View
-              style={[
-                styles.inputWrap,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
+            <View style={[styles.inputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Feather name="lock" size={18} color={colors.mutedForeground} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.foreground }]}
@@ -200,25 +170,34 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
                 testID="password-input"
               />
-              <TouchableOpacity
-                onPress={() => setShowPassword((v) => !v)}
-                style={styles.eyeBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Feather
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={18}
-                  color={colors.mutedForeground}
-                />
+              <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
+                <Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Confirm Password</Text>
+            <View style={[styles.inputWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="lock" size={18} color={colors.mutedForeground} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="Repeat password"
+                placeholderTextColor={colors.mutedForeground}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirm}
+                autoCapitalize="none"
+                testID="confirm-password-input"
+              />
+              <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={styles.eyeBtn}>
+                <Feather name={showConfirm ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              { backgroundColor: loading ? colors.muted : colors.primary },
-            ]}
+            style={[styles.submitBtn, { backgroundColor: loading ? colors.muted : colors.primary }]}
             onPress={handleRegister}
             disabled={loading}
             activeOpacity={0.85}
@@ -239,9 +218,7 @@ export default function RegisterScreen() {
             </Text>
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity>
-                <Text style={[styles.footerLink, { color: colors.primary }]}>
-                  Sign In
-                </Text>
+                <Text style={[styles.footerLink, { color: colors.primary }]}>Sign In</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -252,70 +229,17 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  },
-  topRow: {
-    marginBottom: 20,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 28,
-  },
-  form: {
-    gap: 16,
-  },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
-  },
-  errorText: {
-    color: "#dc2626",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-  },
-  roleRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  roleBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  roleBtnText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  fieldGroup: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
+  container: { flexGrow: 1, paddingHorizontal: 24 },
+  topRow: { marginBottom: 20 },
+  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", marginBottom: 6 },
+  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", marginBottom: 28 },
+  form: { gap: 16 },
+  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 10 },
+  errorText: { color: "#dc2626", fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
+  nameRow: { flexDirection: "row", gap: 12 },
+  fieldGroup: { gap: 6 },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium" },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -324,38 +248,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 52,
   },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  eyeBtn: {
-    paddingLeft: 8,
-  },
-  submitBtn: {
-    height: 52,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 4,
-  },
-  submitBtnText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  loginLink: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  footerText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  footerLink: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  eyeBtn: { paddingLeft: 8 },
+  submitBtn: { height: 52, borderRadius: 12, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  submitBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  loginLink: { flexDirection: "row", justifyContent: "center" },
+  footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });
