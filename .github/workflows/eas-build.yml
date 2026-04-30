@@ -1,0 +1,156 @@
+name: EAS Build & Submit
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to build"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+      profile:
+        description: "Build profile"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+      submit:
+        description: "Submit to store after build?"
+        required: true
+        default: "false"
+        type: boolean
+
+jobs:
+  build-ios:
+    name: Build iOS
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch' && (inputs.platform == 'ios' || inputs.platform == 'all')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: artifacts/blastmycv-mobile
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write Apple ASC API Key
+        env:
+          ASC_API_KEY_CONTENT: ${{ secrets.ASC_API_KEY_CONTENT }}
+        run: |
+          mkdir -p /tmp/asc-keys
+          echo "$ASC_API_KEY_CONTENT" > /tmp/asc-keys/asc-key.p8
+
+      - name: Build iOS
+        working-directory: artifacts/blastmycv-mobile
+        env:
+          ASC_API_KEY_PATH: /tmp/asc-keys/asc-key.p8
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPO_PUBLIC_API_BASE_URL: https://blastmycv.com
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'production' }}"
+          eas build --platform ios --profile $PROFILE --non-interactive --no-wait
+
+      - name: Submit iOS to TestFlight
+        if: |
+          github.event.inputs.submit == 'true' ||
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+        working-directory: artifacts/blastmycv-mobile
+        env:
+          ASC_API_KEY_PATH: /tmp/asc-keys/asc-key.p8
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'production' }}"
+          eas submit --platform ios --profile $PROFILE --latest --non-interactive
+
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch' && (inputs.platform == 'android' || inputs.platform == 'all')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: artifacts/blastmycv-mobile
+
+      - name: Setup Expo & EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write Google Service Account Key
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}
+        run: |
+          mkdir -p /tmp/google-keys
+          echo "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" > /tmp/google-keys/service-account.json
+
+      - name: Build Android
+        working-directory: artifacts/blastmycv-mobile
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_PATH: /tmp/google-keys/service-account.json
+          EXPO_PUBLIC_API_BASE_URL: https://blastmycv.com
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'production' }}"
+          eas build --platform android --profile $PROFILE --non-interactive --no-wait
+
+      - name: Submit Android to Google Play
+        if: |
+          github.event.inputs.submit == 'true' ||
+          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+        working-directory: artifacts/blastmycv-mobile
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_PATH: /tmp/google-keys/service-account.json
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'production' }}"
+          eas submit --platform android --profile $PROFILE --latest --non-interactive
