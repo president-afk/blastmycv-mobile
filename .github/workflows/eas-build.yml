@@ -43,6 +43,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure git credentials
+        run: |
+          git config user.email "ci@blastmycv.com"
+          git config user.name "BlastMyCV CI"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/president-afk/blastmycv-mobile.git
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -69,7 +76,7 @@ jobs:
           node -e "
             const fs = require('fs');
             const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-            const current = parseInt(app.expo.ios.buildNumber || '2', 10);
+            const current = parseInt(app.expo.ios.buildNumber || '5', 10);
             const next = current + 1;
             app.expo.ios.buildNumber = String(next);
             fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
@@ -77,13 +84,11 @@ jobs:
           " | tee /tmp/build_num.txt
           echo "build_number=$(cat /tmp/build_num.txt | grep BUILD_NUMBER | cut -d= -f2)" >> $GITHUB_OUTPUT
 
-      - name: Commit incremented build number
+      - name: Commit and push incremented build number
         run: |
-          git config user.email "ci@blastmycv.com"
-          git config user.name "BlastMyCV CI"
           git add app.json
-          git commit -m "ci: bump iOS buildNumber to ${{ steps.bump.outputs.build_number }} [skip ci]" || echo "No changes"
-          git push origin HEAD:main || echo "Push skipped"
+          git commit -m "ci: bump iOS buildNumber to ${{ steps.bump.outputs.build_number }} [skip ci]" || echo "Nothing to commit"
+          git push origin HEAD:main
 
       - name: Write Apple ASC API Key
         env:
@@ -99,11 +104,6 @@ jobs:
             fs.writeFileSync('/tmp/asc-keys/asc-key.p8', key);
             console.log('Key written, length:', key.length, 'has headers:', key.includes('BEGIN'));
           "
-
-      - name: Configure git credentials for EAS
-        run: |
-          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/president-afk/blastmycv-mobile.git
 
       - name: Build iOS (+ auto-submit to TestFlight if requested)
         env:
