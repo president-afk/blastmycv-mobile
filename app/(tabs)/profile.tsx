@@ -39,8 +39,8 @@ export default function ProfileScreen() {
   const bottomPadding = Platform.OS === "web" ? 34 : insets.bottom + 100;
 
   const displayName =
+    (user?.firstName ? `${user.firstName} ${user?.lastName ?? ""}`.trim() : null) ??
     user?.name ??
-    (user?.first_name ? `${user.first_name} ${user?.last_name ?? ""}`.trim() : null) ??
     user?.email?.split("@")[0] ??
     "User";
 
