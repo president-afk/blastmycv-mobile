@@ -4,24 +4,26 @@ export interface CV {
   id: string | number;
   filename?: string;
   original_name?: string;
+  originalName?: string;
   file_url?: string;
+  fileUrl?: string;
   url?: string;
   status?: "pending" | "active" | "processing" | string;
   created_at?: string;
+  createdAt?: string;
   updated_at?: string;
   size?: number;
 }
 
-export interface CVListResponse {
-  data?: CV[];
-  cvs?: CV[];
-  items?: CV[];
-}
-
 export async function getCVs(): Promise<CV[]> {
-  const response = await apiRequest<CVListResponse | CV[]>("/api/cv");
-  if (Array.isArray(response)) return response;
-  return response.data ?? response.cvs ?? response.items ?? [];
+  try {
+    const response = await apiRequest<unknown>("/api/cvs");
+    if (Array.isArray(response)) return response as CV[];
+    const r = response as Record<string, unknown>;
+    return ((r.data ?? r.cvs ?? r.items ?? []) as CV[]);
+  } catch {
+    return [];
+  }
 }
 
 export async function uploadCV(
@@ -36,18 +38,25 @@ export async function uploadCV(
     type: mimeType,
   } as unknown as Blob);
 
-  return apiUpload<CV>("/api/cv/upload", formData);
+  try {
+    return await apiUpload<CV>("/api/cvs", formData);
+  } catch {
+    return await apiUpload<CV>("/api/cv/upload", formData);
+  }
 }
 
 export async function deleteCV(id: string | number): Promise<{ message: string }> {
-  return apiRequest<{ message: string }>(`/api/cv/${id}`, {
-    method: "DELETE",
-  });
+  try {
+    return await apiRequest<{ message: string }>(`/api/cvs/${id}`, { method: "DELETE" });
+  } catch {
+    return await apiRequest<{ message: string }>(`/api/cv/${id}`, { method: "DELETE" });
+  }
 }
 
 export async function getActiveCV(): Promise<CV | null> {
   try {
-    return await apiRequest<CV>("/api/cv/active");
+    const cvs = await getCVs();
+    return cvs.find(c => c.status === "active") ?? cvs[0] ?? null;
   } catch {
     return null;
   }
