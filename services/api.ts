@@ -3,6 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://blastmycv.com";
 
+const SESSION_KEY = "session_id";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -14,8 +16,22 @@ export class ApiError extends Error {
   }
 }
 
-async function getToken(): Promise<string | null> {
-  return AsyncStorage.getItem("auth_token");
+export async function getSessionId(): Promise<string | null> {
+  return AsyncStorage.getItem(SESSION_KEY);
+}
+
+export async function saveSessionId(sessionId: string): Promise<void> {
+  await AsyncStorage.setItem(SESSION_KEY, sessionId);
+}
+
+export async function clearSession(): Promise<void> {
+  await AsyncStorage.removeItem(SESSION_KEY);
+}
+
+function extractSessionFromCookies(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(/PHPSESSID=([^;]+)/);
+  return match ? match[1] : null;
 }
 
 interface RequestOptions {
@@ -38,9 +54,9 @@ export async function apiRequest<T>(
   };
 
   if (!skipAuth) {
-    const token = await getToken();
-    if (token) {
-      requestHeaders["Authorization"] = `Bearer ${token}`;
+    const sessionId = await getSessionId();
+    if (sessionId) {
+      requestHeaders["Cookie"] = `PHPSESSID=${sessionId}`;
     }
   }
 
@@ -50,7 +66,16 @@ export async function apiRequest<T>(
     method,
     headers: requestHeaders,
     body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
   });
+
+  const setCookie = response.headers.get("set-cookie");
+  if (setCookie) {
+    const newSession = extractSessionFromCookies(setCookie);
+    if (newSession) {
+      await saveSessionId(newSession);
+    }
+  }
 
   let data: unknown;
   const contentType = response.headers.get("content-type");
@@ -75,13 +100,13 @@ export async function apiUpload<T>(
   path: string,
   formData: FormData,
 ): Promise<T> {
-  const token = await getToken();
+  const sessionId = await getSessionId();
 
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  if (sessionId) {
+    headers["Cookie"] = `PHPSESSID=${sessionId}`;
   }
 
   const url = `${API_BASE_URL}${path}`;
@@ -90,7 +115,16 @@ export async function apiUpload<T>(
     method: "POST",
     headers,
     body: formData,
+    credentials: "include",
   });
+
+  const setCookie = response.headers.get("set-cookie");
+  if (setCookie) {
+    const newSession = extractSessionFromCookies(setCookie);
+    if (newSession) {
+      await saveSessionId(newSession);
+    }
+  }
 
   let data: unknown;
   const contentType = response.headers.get("content-type");
