@@ -66,15 +66,15 @@ jobs:
           ASC_API_KEY_CONTENT: ${{ secrets.ASC_API_KEY_CONTENT }}
         run: |
           mkdir -p /tmp/asc-keys
-          python3 - << 'PYEOF'
-import os
-key = os.environ['ASC_API_KEY_CONTENT']
-if '-----BEGIN' not in key:
-    key = '-----BEGIN PRIVATE KEY-----\n' + key.strip() + '\n-----END PRIVATE KEY-----\n'
-with open('/tmp/asc-keys/asc-key.p8', 'w') as f:
-    f.write(key)
-print("Key written:", len(key), "chars, has headers:", '-----BEGIN' in key)
-PYEOF
+          node -e "
+            const fs = require('fs');
+            let key = process.env.ASC_API_KEY_CONTENT || '';
+            if (!key.includes('-----BEGIN')) {
+              key = '-----BEGIN PRIVATE KEY-----\n' + key.trim() + '\n-----END PRIVATE KEY-----\n';
+            }
+            fs.writeFileSync('/tmp/asc-keys/asc-key.p8', key);
+            console.log('Key written, length:', key.length, 'has headers:', key.includes('BEGIN'));
+          "
 
       - name: Build iOS (+ auto-submit to TestFlight if requested)
         env:
