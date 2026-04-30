@@ -66,12 +66,15 @@ jobs:
           ASC_API_KEY_CONTENT: ${{ secrets.ASC_API_KEY_CONTENT }}
         run: |
           mkdir -p /tmp/asc-keys
-          # Wrap raw base64 key with PEM headers required by Fastlane/OpenSSL
-          if echo "$ASC_API_KEY_CONTENT" | grep -q "BEGIN"; then
-            printf '%s' "$ASC_API_KEY_CONTENT" > /tmp/asc-keys/asc-key.p8
-          else
-            printf '-----BEGIN PRIVATE KEY-----\n%s\n-----END PRIVATE KEY-----\n' "$ASC_API_KEY_CONTENT" > /tmp/asc-keys/asc-key.p8
-          fi
+          python3 - << 'PYEOF'
+import os
+key = os.environ['ASC_API_KEY_CONTENT']
+if '-----BEGIN' not in key:
+    key = '-----BEGIN PRIVATE KEY-----\n' + key.strip() + '\n-----END PRIVATE KEY-----\n'
+with open('/tmp/asc-keys/asc-key.p8', 'w') as f:
+    f.write(key)
+print("Key written:", len(key), "chars, has headers:", '-----BEGIN' in key)
+PYEOF
 
       - name: Build iOS (+ auto-submit to TestFlight if requested)
         env:
