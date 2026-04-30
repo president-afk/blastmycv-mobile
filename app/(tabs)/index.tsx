@@ -87,8 +87,8 @@ export default function DashboardScreen() {
   })();
 
   const displayName =
+    (user?.firstName ? `${user.firstName} ${user?.lastName ?? ""}`.trim() : null) ??
     user?.name ??
-    (user?.first_name ? `${user.first_name} ${user?.last_name ?? ""}`.trim() : null) ??
     user?.email?.split("@")[0] ??
     "there";
 
