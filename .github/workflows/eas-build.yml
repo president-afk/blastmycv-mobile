@@ -100,6 +100,11 @@ jobs:
             console.log('Key written, length:', key.length, 'has headers:', key.includes('BEGIN'));
           "
 
+      - name: Configure git credentials for EAS
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/president-afk/blastmycv-mobile.git
+
       - name: Build iOS (+ auto-submit to TestFlight if requested)
         env:
           ASC_API_KEY_PATH: /tmp/asc-keys/asc-key.p8
