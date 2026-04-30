@@ -37,6 +37,8 @@ jobs:
     if: |
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
       (github.event_name == 'workflow_dispatch' && (inputs.platform == 'ios' || inputs.platform == 'all'))
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +62,40 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Auto-increment iOS build number via GitHub API
+        id: bump
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Read current app.json and increment buildNumber
+          CURRENT=$(node -e "const a=require('./app.json');console.log(a.expo.ios.buildNumber||'5')")
+          NEXT=$((CURRENT + 1))
+          echo "Current: $CURRENT → Next: $NEXT"
+
+          # Write new app.json locally
+          node -e "
+            const fs=require('fs');
+            const a=JSON.parse(fs.readFileSync('app.json','utf8'));
+            a.expo.ios.buildNumber=String($NEXT);
+            fs.writeFileSync('app.json',JSON.stringify(a,null,2)+'\n');
+          "
+
+          # Update app.json via GitHub API (works without git push permission)
+          FILE_SHA=$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/app.json" \
+            | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');console.log(JSON.parse(d).sha)")
+
+          CONTENT_B64=$(base64 -w0 app.json)
+
+          curl -sf -X PUT \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/contents/app.json" \
+            -d "{\"message\":\"ci: bump iOS buildNumber to $NEXT [skip ci]\",\"content\":\"$CONTENT_B64\",\"sha\":\"$FILE_SHA\",\"branch\":\"main\"}" \
+            | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const r=JSON.parse(d);console.log(r.commit?'✅ Pushed buildNumber='+$NEXT:'❌ '+JSON.stringify(r))"
+
+          echo "build_number=$NEXT" >> $GITHUB_OUTPUT
 
       - name: Write Apple ASC API Key
         env:
