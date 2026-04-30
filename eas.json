@@ -51,6 +51,7 @@
         "ascApiKeyIssuerId": "$ASC_ISSUER_ID",
         "ascApiKeyId": "$ASC_KEY_ID",
         "appleTeamId": "T9N7N99ACN",
+        "ascAppId": "6764798595",
         "language": "en-US"
       },
       "android": {
