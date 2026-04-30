@@ -27,7 +27,7 @@ on:
       submit:
         description: "Submit to store after build?"
         required: true
-        default: "true"
+        default: "false"
         type: boolean
 
 jobs:
@@ -68,7 +68,7 @@ jobs:
           mkdir -p /tmp/asc-keys
           printf '%s' "$ASC_API_KEY_CONTENT" > /tmp/asc-keys/asc-key.p8
 
-      - name: Build iOS (with auto-submit to TestFlight)
+      - name: Build iOS
         env:
           ASC_API_KEY_PATH: /tmp/asc-keys/asc-key.p8
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -76,12 +76,18 @@ jobs:
           EXPO_PUBLIC_API_BASE_URL: https://blastmycv.com
         run: |
           PROFILE="${{ github.event.inputs.profile || 'production' }}"
-          SHOULD_SUBMIT="${{ github.event.inputs.submit || 'true' }}"
-          if [ "$SHOULD_SUBMIT" = "true" ]; then
-            eas build --platform ios --profile $PROFILE --non-interactive --auto-submit
-          else
-            eas build --platform ios --profile $PROFILE --non-interactive --no-wait
-          fi
+          eas build --platform ios --profile $PROFILE --non-interactive --no-wait
+
+      - name: Submit iOS to TestFlight
+        if: ${{ github.event.inputs.submit == 'true' }}
+        env:
+          ASC_API_KEY_PATH: /tmp/asc-keys/asc-key.p8
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          EXPO_PUBLIC_API_BASE_URL: https://blastmycv.com
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'production' }}"
+          eas submit --platform ios --profile $PROFILE --latest --non-interactive
 
   build-android:
     name: Build Android
@@ -118,9 +124,4 @@ jobs:
           EXPO_PUBLIC_API_BASE_URL: https://blastmycv.com
         run: |
           PROFILE="${{ github.event.inputs.profile || 'production' }}"
-          SHOULD_SUBMIT="${{ github.event.inputs.submit || 'false' }}"
-          if [ "$SHOULD_SUBMIT" = "true" ]; then
-            eas build --platform android --profile $PROFILE --non-interactive --auto-submit
-          else
-            eas build --platform android --profile $PROFILE --non-interactive --no-wait
-          fi
+          eas build --platform android --profile $PROFILE --non-interactive --no-wait
