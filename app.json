@@ -19,7 +19,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.blastmycv.mobile",
-      "buildNumber": "2",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow BlastMyCV to access your photo library to upload your CV.",
         "NSCameraUsageDescription": "Allow BlastMyCV to use your camera.",
