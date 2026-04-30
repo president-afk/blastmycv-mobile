@@ -93,6 +93,10 @@ export async function getProfile(): Promise<User> {
   return apiRequest<User>("/api/auth/me");
 }
 
+export async function getUserProfile(): Promise<User> {
+  return apiRequest<User>("/api/auth/me");
+}
+
 export async function updateProfile(data: Partial<User>): Promise<User> {
   return apiRequest<User>("/api/auth/profile", {
     method: "PUT",
