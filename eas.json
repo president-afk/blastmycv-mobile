@@ -50,9 +50,8 @@
         "ascApiKeyPath": "$ASC_API_KEY_PATH",
         "ascApiKeyIssuerId": "$ASC_ISSUER_ID",
         "ascApiKeyId": "$ASC_KEY_ID",
-        "appleTeamId": "$APPLE_TEAM_ID",
-        "language": "en-US",
-        "metadataPath": "./store/ios/metadata"
+        "appleTeamId": "T9N7N99ACN",
+        "language": "en-US"
       },
       "android": {
         "serviceAccountKeyPath": "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH",
@@ -66,7 +65,7 @@
         "ascApiKeyPath": "$ASC_API_KEY_PATH",
         "ascApiKeyIssuerId": "$ASC_ISSUER_ID",
         "ascApiKeyId": "$ASC_KEY_ID",
-        "appleTeamId": "$APPLE_TEAM_ID",
+        "appleTeamId": "T9N7N99ACN",
         "language": "en-US"
       },
       "android": {
