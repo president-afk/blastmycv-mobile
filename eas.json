@@ -57,8 +57,7 @@
       "android": {
         "serviceAccountKeyPath": "$GOOGLE_SERVICE_ACCOUNT_KEY_PATH",
         "track": "internal",
-        "releaseStatus": "draft",
-        "changesNotSentForReview": false
+        "releaseStatus": "draft"
       }
     },
     "preview": {
